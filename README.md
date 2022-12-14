@@ -1,3 +1,547 @@
+# 手动部署rabbitmq集群
+
+## 创建configmap
+
+创建命名空间
+
+```bash
+kubectl create ns rabbitmq-lab
+```
+
+
+
+创建configmgp配置文件
+
+```bash
+nano rabbitmq-configmap.yaml
+```
+
+
+
+```yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: rabbitmq-cluster-config
+  namespace: rabbitmq-lab
+  labels:
+    addonmanager.kubernetes.io/mode: Reconcile
+data:
+    enabled_plugins: |
+      [rabbitmq_management,rabbitmq_peer_discovery_k8s].
+    rabbitmq.conf: |
+      default_user = admin
+      default_pass = 123!@#
+      ## Cluster formation. See https://www.rabbitmq.com/cluster-formation.html to learn more.
+      cluster_formation.peer_discovery_backend = rabbit_peer_discovery_k8s
+      cluster_formation.k8s.host = kubernetes.default.svc.cluster.local
+      ## Should RabbitMQ node name be computed from the pod's hostname or IP address?
+      ## IP addresses are not stable, so using [stable] hostnames is recommended when possible.
+      ## Set to "hostname" to use pod hostnames.
+      ## When this value is changed, so should the variable used to set the RABBITMQ_NODENAME
+      ## environment variable.
+      cluster_formation.k8s.address_type = hostname
+      ## How often should node cleanup checks run?
+      cluster_formation.node_cleanup.interval = 30
+      ## Set to false if automatic removal of unknown/absent nodes
+      ## is desired. This can be dangerous, see
+      ##  * https://www.rabbitmq.com/cluster-formation.html#node-health-checks-and-cleanup
+      ##  * https://groups.google.com/forum/#!msg/rabbitmq-users/wuOfzEywHXo/k8z_HWIkBgAJ
+      cluster_formation.node_cleanup.only_log_warning = true
+      cluster_partition_handling = autoheal
+      ## See https://www.rabbitmq.com/ha.html#master-migration-data-locality
+      queue_master_locator=min-masters
+      ## See https://www.rabbitmq.com/access-control.html#loopback-users
+      loopback_users.guest = false
+      cluster_formation.randomized_startup_delay_range.min = 0
+      cluster_formation.randomized_startup_delay_range.max = 2
+      # default is rabbitmq-cluster's namespace
+      # hostname_suffix
+      cluster_formation.k8s.hostname_suffix = .rabbitmq-cluster.default.svc.cluster.local
+      # memory
+      vm_memory_high_watermark.absolute = 1GB
+      # disk
+      disk_free_limit.absolute = 2GB
+```
+
+
+
+```bash
+kubectl apply -f rabbitmq-configmap.yaml
+```
+
+
+
+查看configmap信息
+
+```
+kubectl get configmap -n rabbitmq-lab
+```
+
+
+
+```bash
+root@node1:~# kubectl get configmap -n rabbitmq-lab
+NAME                      DATA   AGE
+kube-root-ca.crt          1      35s
+rabbitmq-cluster-config   2      25s
+```
+
+
+
+查看configmap详细信息
+
+```bash
+kubectl describe configmap rabbitmq-cluster-config -n rabbitmq-lab
+```
+
+
+
+```bash
+root@node1:~# kubectl describe configmap rabbitmq-cluster-config -n rabbitmq-lab
+Name:         rabbitmq-cluster-config
+Namespace:    rabbitmq-lab
+Labels:       addonmanager.kubernetes.io/mode=Reconcile
+Annotations:  <none>
+
+Data
+====
+enabled_plugins:
+----
+[rabbitmq_management,rabbitmq_peer_discovery_k8s].
+
+rabbitmq.conf:
+----
+default_user = admin
+default_pass = 123!@
+## Cluster formation. See https://www.rabbitmq.com/cluster-formation.html to learn more.
+cluster_formation.peer_discovery_backend = rabbit_peer_discovery_k8s
+cluster_formation.k8s.host = kubernetes.default.svc.cluster.local
+## Should RabbitMQ node name be computed from the pod's hostname or IP address?
+## IP addresses are not stable, so using [stable] hostnames is recommended when possible.
+## Set to "hostname" to use pod hostnames.
+## When this value is changed, so should the variable used to set the RABBITMQ_NODENAME
+## environment variable.
+cluster_formation.k8s.address_type = hostname
+## How often should node cleanup checks run?
+cluster_formation.node_cleanup.interval = 30
+## Set to false if automatic removal of unknown/absent nodes
+## is desired. This can be dangerous, see
+##  * https://www.rabbitmq.com/cluster-formation.html#node-health-checks-and-cleanup
+##  * https://groups.google.com/forum/#!msg/rabbitmq-users/wuOfzEywHXo/k8z_HWIkBgAJ
+cluster_formation.node_cleanup.only_log_warning = true
+cluster_partition_handling = autoheal
+## See https://www.rabbitmq.com/ha.html#master-migration-data-locality
+queue_master_locator=min-masters
+## See https://www.rabbitmq.com/access-control.html#loopback-users
+loopback_users.guest = false
+cluster_formation.randomized_startup_delay_range.min = 0
+cluster_formation.randomized_startup_delay_range.max = 2
+# default is rabbitmq-cluster's namespace
+# hostname_suffix
+cluster_formation.k8s.hostname_suffix = .rabbitmq-cluster.default.svc.cluster.local
+# memory
+vm_memory_high_watermark.absolute = 1GB
+# disk
+disk_free_limit.absolute = 2GB
+
+
+BinaryData
+====
+
+Events:  <none>
+```
+
+
+
+
+
+## 创建service
+
+
+
+创建service定义文件,并创建service
+
+```
+nano rabbitmq-service.yaml
+```
+
+
+
+```yaml
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: rabbitmq-cluster
+  name: rabbitmq-cluster
+  namespace: rabbitmq-lab
+spec:
+  clusterIP: None
+  ports:
+  - name: rmqport
+    port: 5672
+    targetPort: 5672
+  selector:
+    app: rabbitmq-cluster
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: rabbitmq-cluster
+  name: rabbitmq-cluster-manage
+  namespace: rabbitmq-lab
+spec:
+  ports:
+  - name: http
+    port: 15672
+    protocol: TCP
+    targetPort: 15672
+  selector:
+    app: rabbitmq-cluster
+  type: NodePort
+```
+
+
+
+```
+kubectl apply -f rabbitmq-service.yaml
+```
+
+
+
+查看服务
+
+```
+kubectl get svc -n rabbitmq-lab
+```
+
+
+
+```bash
+root@node1:~# kubectl get svc -n rabbitmq-lab
+NAME                      TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)           AGE
+rabbitmq-cluster          ClusterIP   None            <none>        5672/TCP          17s
+rabbitmq-cluster-manage   NodePort    10.96.103.234   <none>        15672:30770/TCP   17s
+```
+
+特别留意 `rabbitmq-cluster-manage` 的nodeport端口号
+
+
+
+## 创建rbac授权
+
+创建授权配置文件并创建授权
+
+```yaml
+nano rabbitmq-rbac.yaml
+```
+
+
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rabbitmq-cluster
+  namespace: rabbitmq-lab
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: rabbitmq-cluster
+  namespace: rabbitmq-lab
+rules:
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["get"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: rabbitmq-cluster
+  namespace: rabbitmq-lab
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: rabbitmq-cluster
+subjects:
+- kind: ServiceAccount
+  name: rabbitmq-cluster
+  namespace: rabbitmq-lab
+```
+
+
+
+```
+kubectl apply -f rabbitmq-rbac.yaml
+```
+
+
+
+## 创建statefulset
+
+创建sts配置文件,并创建sts
+
+```bash
+nano rabbitmq-cluster-sts.yaml
+```
+
+
+
+```yaml
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: rabbitmq-cluster
+  name: rabbitmq-cluster
+  namespace: rabbitmq-lab
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: rabbitmq-cluster
+  serviceName: rabbitmq-cluster
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-cluster
+    spec:
+      containers:
+      - args:
+        - -c
+        - cp -v /etc/rabbitmq/rabbitmq.conf ${RABBITMQ_CONFIG_FILE}; exec docker-entrypoint.sh
+          rabbitmq-server
+        command:
+        - sh
+        env:
+        - name: TZ
+          value: 'Asia/Shanghai'
+        - name: RABBITMQ_ERLANG_COOKIE
+          value: 'SWvCP0Hrqv43NG7GybHC95ntCJKoW8UyNFWnBEWG8TY='
+        - name: K8S_SERVICE_NAME
+          value: rabbitmq-cluster
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: RABBITMQ_USE_LONGNAME
+          value: "true"
+        - name: RABBITMQ_NODENAME
+          value: rabbit@$(POD_NAME).$(K8S_SERVICE_NAME).$(POD_NAMESPACE).svc.cluster.local
+        - name: RABBITMQ_CONFIG_FILE
+          value: /var/lib/rabbitmq/rabbitmq.conf
+        image: rabbitmq:3.8.3-management
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command:
+            - rabbitmq-diagnostics
+            - status
+          # See https://www.rabbitmq.com/monitoring.html for monitoring frequency recommendations.
+          initialDelaySeconds: 60
+          periodSeconds: 60
+          timeoutSeconds: 15
+        name: rabbitmq
+        ports:
+        - containerPort: 15672
+          name: http
+          protocol: TCP
+        - containerPort: 5672
+          name: amqp
+          protocol: TCP
+        readinessProbe:
+          exec:
+            command:
+            - rabbitmq-diagnostics
+            - status
+          initialDelaySeconds: 20
+          periodSeconds: 60
+          timeoutSeconds: 10
+        volumeMounts:
+        - mountPath: /etc/rabbitmq
+          name: config-volume
+          readOnly: false
+        - mountPath: /var/lib/rabbitmq
+          name: rabbitmq-storage
+          readOnly: false
+        - name: timezone
+          mountPath: /etc/localtime
+          readOnly: true
+      serviceAccountName: rabbitmq-cluster
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: config-volume
+        configMap:
+          items:
+          - key: rabbitmq.conf
+            path: rabbitmq.conf
+          - key: enabled_plugins
+            path: enabled_plugins
+          name: rabbitmq-cluster-config
+      - name: timezone
+        hostPath:
+          path: /usr/share/zoneinfo/Asia/Shanghai
+  volumeClaimTemplates:
+  - metadata:
+      name: rabbitmq-storage
+    spec:
+      accessModes:
+      - ReadWriteMany
+      storageClassName: "nfs-csi " #需要一个nfs类型的存储
+      resources:
+        requests:
+          storage: 2Gi
+```
+
+
+
+```bash
+kubectl apply -f rabbitmq-cluster-sts.yaml
+```
+
+
+
+## 部署检查
+
+
+
+查看创建的资源
+
+```
+ kubectl get po,sts -l app=rabbitmq-cluster -n rabbitmq-lab
+```
+
+
+
+```bash
+root@node1:~#  kubectl get po,sts -l app=rabbitmq-cluster -n rabbitmq-lab
+NAME                     READY   STATUS    RESTARTS   AGE
+pod/rabbitmq-cluster-0   1/1     Running   0          4m16s
+pod/rabbitmq-cluster-1   1/1     Running   0          2m15s
+pod/rabbitmq-cluster-2   1/1     Running   0          72s
+
+NAME                                READY   AGE
+statefulset.apps/rabbitmq-cluster   3/3     4m16s
+```
+
+
+
+查看日志, 从日志的最后部分观察集群建立的状态
+
+```
+kubectl logs -f rabbitmq-cluster-0 -n rabbitmq-lab
+```
+
+
+
+```bash
+2022-12-14 07:14:23.689 [info] <0.812.0> Starting worker pool 'management_worker_pool' with 3 processes in it
+2022-12-14 07:14:23.896 [info] <0.9.0> Server startup complete; 5 plugins started.
+ * rabbitmq_management
+ * rabbitmq_management_agent
+ * rabbitmq_peer_discovery_k8s
+ * rabbitmq_peer_discovery_common
+ * rabbitmq_web_dispatch
+ completed with 5 plugins.
+```
+
+
+
+进入到`pod`中通过客户端查看集群状态
+
+```bash
+kubectl exec -it rabbitmq-cluster-0 bash -n rabbitmq-lab
+```
+
+
+
+```bash
+rabbitmqctl cluster_status
+```
+
+
+
+```bash
+root@node1:~# kubectl exec -it rabbitmq-cluster-0 bash -n rabbitmq-lab
+kubectl exec [POD] [COMMAND] is DEPRECATED and will be removed in a future version. Use kubectl exec [POD] -- [COMMAND] instead.
+root@rabbitmq-cluster-0:/# rabbitmqctl cluster_status
+Cluster status of node rabbit@rabbitmq-cluster-0.rabbitmq-cluster.rabbitmq-lab.svc.cluster.local ...
+Basics
+
+Cluster name: rabbit@rabbitmq-cluster-0.rabbitmq-cluster.rabbitmq-lab.svc.cluster.local
+
+Disk Nodes
+
+rabbit@rabbitmq-cluster-0.rabbitmq-cluster.rabbitmq-lab.svc.cluster.local
+
+Running Nodes
+
+rabbit@rabbitmq-cluster-0.rabbitmq-cluster.rabbitmq-lab.svc.cluster.local
+
+Versions
+
+rabbit@rabbitmq-cluster-0.rabbitmq-cluster.rabbitmq-lab.svc.cluster.local: RabbitMQ 3.8.3 on Erlang 22.3.4.1
+
+Alarms
+
+Free disk space alarm on node rabbit@rabbitmq-cluster-0.rabbitmq-cluster.rabbitmq-lab.svc.cluster.local
+
+Network Partitions
+
+(none)
+
+Listeners
+
+Node: rabbit@rabbitmq-cluster-0.rabbitmq-cluster.rabbitmq-lab.svc.cluster.local, interface: [::], port: 25672, protocol: clustering, purpose: inter-node and CLI tool communication
+Node: rabbit@rabbitmq-cluster-0.rabbitmq-cluster.rabbitmq-lab.svc.cluster.local, interface: [::], port: 5672, protocol: amqp, purpose: AMQP 0-9-1 and AMQP 1.0
+Node: rabbit@rabbitmq-cluster-0.rabbitmq-cluster.rabbitmq-lab.svc.cluster.local, interface: [::], port: 15672, protocol: http, purpose: HTTP API
+
+Feature flags
+
+Flag: drop_unroutable_metric, state: enabled
+Flag: empty_basic_get_metric, state: enabled
+Flag: implicit_default_bindings, state: enabled
+Flag: quorum_queue, state: enabled
+Flag: virtual_host_metadata, state: enabled
+```
+
+
+
+使用NodePort访问管理界面
+
+```bash
+kubectl get svc -l app=rabbitmq-cluster -n rabbitmq-lab
+```
+
+
+
+```bash
+root@node1:~# kubectl get svc -l app=rabbitmq-cluster -n rabbitmq-lab
+NAME                      TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)           AGE
+rabbitmq-cluster          ClusterIP   None             <none>        5672/TCP          9m40s
+rabbitmq-cluster-manage   NodePort    10.106.199.214   <none>        15672:31846/TCP   9m40s
+```
+
+
+
+地址: `http://node1:31846` 用户名 `admin` 密码 `123!@`
+
+![image-20221214153317058](README.assets/image-20221214153317058.png)
+
+
+
 # 使用Operator部署Elastic技术堆栈
 
 ## 在群集上部署ECK(Elastic Cloud on Kubernetes)
