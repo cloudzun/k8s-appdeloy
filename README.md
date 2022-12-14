@@ -1,6 +1,6 @@
 # 使用Operator部署Elastic技术堆栈
 
-## 在群集上部署EKC
+## 在群集上部署ECK(Elastic Cloud on Kubernetes)
 
 安装CRD 
 
@@ -133,9 +133,10 @@ kubectl get pod -n elastic-system
 
 
 ```bash
-root@node1:~# kubectl get pod
+root@node1:~# kubectl get pod -n elastic-system
 NAME                      READY   STATUS    RESTARTS   AGE
-quickstart-es-default-0   0/1     Running   0          2m36s
+elastic-operator-0        1/1     Running   0          3h16m
+quickstart-es-default-0   1/1     Running   0          85s
 ```
 
 
@@ -162,13 +163,13 @@ kubectl get svc -n elastic-system
 
 
 ```bash
-root@node1:~# kubectl get svc
-NAME                          TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
-kubernetes                    ClusterIP   10.96.0.1        <none>        443/TCP    234d
-quickstart-es-default         ClusterIP   None             <none>        9200/TCP   9m52s
-quickstart-es-http            ClusterIP   10.109.198.134   <none>        9200/TCP   9m55s
-quickstart-es-internal-http   ClusterIP   10.100.223.177   <none>        9200/TCP   9m55s
-quickstart-es-transport       ClusterIP   None             <none>        9300/TCP   9m55s
+root@node1:~# kubectl get svc -n elastic-system
+NAME                          TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+elastic-webhook-server        ClusterIP   10.101.144.82   <none>        443/TCP    3h16m
+quickstart-es-default         ClusterIP   None            <none>        9200/TCP   110s
+quickstart-es-http            ClusterIP   10.105.229.85   <none>        9200/TCP   113s
+quickstart-es-internal-http   ClusterIP   10.98.133.235   <none>        9200/TCP   113s
+quickstart-es-transport       ClusterIP   None            <none>        9300/TCP   113s
 ```
 
 特别关注`quickstart-es-http` 的IP地址
@@ -184,13 +185,13 @@ PASSWORD=$(kubectl get secret -n elastic-system quickstart-es-elastic-user -o go
 
 
 ```bash
-curl -u "elastic:$PASSWORD" -k "https://10.109.198.134:9200"
+curl -u "elastic:$PASSWORD" -k "https://10.105.229.85:9200"
 ```
 
 
 
 ```bash
-root@node1:~# curl -u "elastic:$PASSWORD" -k "https://10.109.198.134:9200"
+root@node1:~# curl -u "elastic:$PASSWORD" -k "https://10.105.229.85:9200"
 {
   "name" : "quickstart-es-default-0",
   "cluster_name" : "quickstart",
@@ -272,8 +273,9 @@ kubectl get pod -n elastic-system
 ```bash
 root@node1:~# kubectl get pod -n elastic-system
 NAME                             READY   STATUS    RESTARTS   AGE
-quickstart-es-default-0          1/1     Running   0          31m
-quickstart-kb-58445784d9-7zn7h   1/1     Running   0          6m50s
+elastic-operator-0               1/1     Running   0          3h18m
+quickstart-es-default-0          1/1     Running   0          3m25s
+quickstart-kb-587bc7bc8b-ftqnf   1/1     Running   0          51s
 ```
 
 
@@ -289,12 +291,12 @@ kubectl get svc -n elastic-system
 ```bash
 root@node1:~# kubectl get svc -n elastic-system
 NAME                          TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
-kubernetes                    ClusterIP   10.96.0.1        <none>        443/TCP    235d
-quickstart-es-default         ClusterIP   None             <none>        9200/TCP   33m
-quickstart-es-http            ClusterIP   10.109.198.134   <none>        9200/TCP   33m
-quickstart-es-internal-http   ClusterIP   10.100.223.177   <none>        9200/TCP   33m
-quickstart-es-transport       ClusterIP   None             <none>        9300/TCP   33m
-quickstart-kb-http            ClusterIP   10.97.112.160    <none>        5601/TCP   9m21s
+elastic-webhook-server        ClusterIP   10.101.144.82    <none>        443/TCP    3h18m
+quickstart-es-default         ClusterIP   None             <none>        9200/TCP   3m47s
+quickstart-es-http            ClusterIP   10.105.229.85    <none>        9200/TCP   3m50s
+quickstart-es-internal-http   ClusterIP   10.98.133.235    <none>        9200/TCP   3m50s
+quickstart-es-transport       ClusterIP   None             <none>        9300/TCP   3m50s
+quickstart-kb-http            ClusterIP   10.109.170.244   <none>        5601/TCP   74s
 ```
 
 
@@ -316,12 +318,12 @@ kubectl get svc -n elastic-system
 ```bash
 root@node1:~# kubectl get svc -n elastic-system
 NAME                          TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
-kubernetes                    ClusterIP   10.96.0.1        <none>        443/TCP          235d
-quickstart-es-default         ClusterIP   None             <none>        9200/TCP         38m
-quickstart-es-http            ClusterIP   10.109.198.134   <none>        9200/TCP         38m
-quickstart-es-internal-http   ClusterIP   10.100.223.177   <none>        9200/TCP         38m
-quickstart-es-transport       ClusterIP   None             <none>        9300/TCP         38m
-quickstart-kb-http            NodePort    10.97.112.160    <none>        5601:30572/TCP   13m
+elastic-webhook-server        ClusterIP   10.101.144.82    <none>        443/TCP          3h19m
+quickstart-es-default         ClusterIP   None             <none>        9200/TCP         4m16s
+quickstart-es-http            ClusterIP   10.105.229.85    <none>        9200/TCP         4m19s
+quickstart-es-internal-http   ClusterIP   10.98.133.235    <none>        9200/TCP         4m19s
+quickstart-es-transport       ClusterIP   None             <none>        9300/TCP         4m19s
+quickstart-kb-http            NodePort    10.109.170.244   <none>        5601:30572/TCP   103s
 ```
 
 
@@ -438,11 +440,12 @@ kubectl get pod -n elastic-system
 ```bash
 root@node1:~# kubectl get pod -n elastic-system
 NAME                             READY   STATUS    RESTARTS   AGE
-quickstart-beat-filebeat-6k8sh   1/1     Running   0          2m22s
-quickstart-beat-filebeat-9tpvj   1/1     Running   0          2m22s
-quickstart-beat-filebeat-d7gbt   1/1     Running   0          2m22s
-quickstart-es-default-0          1/1     Running   0          56m
-quickstart-kb-58445784d9-7zn7h   1/1     Running   0          31m
+elastic-operator-0               1/1     Running   0          3h20m
+quickstart-beat-filebeat-4hdz8   1/1     Running   0          11s
+quickstart-beat-filebeat-d6frn   1/1     Running   0          11s
+quickstart-beat-filebeat-jx2xg   1/1     Running   0          11s
+quickstart-es-default-0          1/1     Running   0          5m14s
+quickstart-kb-587bc7bc8b-ftqnf   1/1     Running   0          2m40s
 ```
 
 
@@ -450,7 +453,7 @@ quickstart-kb-58445784d9-7zn7h   1/1     Running   0          31m
 查看某个filebeat中的日志
 
 ```bash
-kubectl logs -f quickstart-beat-filebeat-d7gbt -n elastic-system
+kubectl logs -f quickstart-beat-filebeat-jx2xg -n elastic-system
 ```
 
 
@@ -554,6 +557,74 @@ quickstart   green    3       8.5.3     Ready   74m
 
 
 
+```bash
+root@node1:~# kubectl get pod -n elastic-system -o wide | grep quickstart-es-default
+quickstart-es-default-0          1/1     Running   0          7m45s   10.244.135.17    node3   <none>           <none>
+quickstart-es-default-1          1/1     Running   0          106s    10.244.104.21    node2   <none>           <none>
+quickstart-es-default-2          0/1     Running   0          39s     10.244.166.146   node1   <none>           <none>
+```
+
+
+
+查看群集的PVC
+
+```bash
+kubectl get pvc -n elastic-system
+```
+
+
+
+```bash
+root@node1:~# kubectl get pvc -n elastic-system
+NAME                                         STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+elasticsearch-data-quickstart-es-default-0   Bound    pvc-1ac82eaa-f155-4f28-bd13-fce3cdf6b1a3   1Gi        RWO            longhorn       8m35s
+elasticsearch-data-quickstart-es-default-1   Bound    pvc-f7f3bc7a-d04c-462d-8f44-87379e48ed3d   1Gi        RWO            longhorn       2m36s
+elasticsearch-data-quickstart-es-default-2   Bound    pvc-b869838d-c9fa-47f1-be00-a48b4a00fc2f   1Gi        RWO            longhorn       89s
+```
+
+
+
+查看其中一个pvc的详细信息
+
+```bash
+kubectl describe pvc elasticsearch-data-quickstart-es-default-0 -n elastic-system
+```
+
+
+
+```bash
+root@node1:~# kubectl describe pvc elasticsearch-data-quickstart-es-default-0 -n elastic-system
+Name:          elasticsearch-data-quickstart-es-default-0
+Namespace:     elastic-system
+StorageClass:  longhorn
+Status:        Bound
+Volume:        pvc-1ac82eaa-f155-4f28-bd13-fce3cdf6b1a3
+Labels:        common.k8s.elastic.co/type=elasticsearch
+               elasticsearch.k8s.elastic.co/cluster-name=quickstart
+               elasticsearch.k8s.elastic.co/statefulset-name=quickstart-es-default
+Annotations:   pv.kubernetes.io/bind-completed: yes
+               pv.kubernetes.io/bound-by-controller: yes
+               volume.beta.kubernetes.io/storage-provisioner: driver.longhorn.io
+               volume.kubernetes.io/storage-provisioner: driver.longhorn.io
+Finalizers:    [kubernetes.io/pvc-protection]
+Capacity:      1Gi
+Access Modes:  RWO
+VolumeMode:    Filesystem
+Used By:       quickstart-es-default-0
+Events:
+  Type    Reason                 Age                From                                                                                      Message
+  ----    ------                 ----               ----                                                                                      -------
+  Normal  Provisioning           10m                driver.longhorn.io_csi-provisioner-869bdc4b79-s4gqb_b0fa1fcf-3a45-4b11-bf01-8e2c2367028d  External provisioner is provisioning volume for claim "elastic-system/elasticsearch-data-quickstart-es-default-0"
+  Normal  ExternalProvisioning   10m (x2 over 10m)  persistentvolume-controller                                                               waiting for a volume to be created, either by external provisioner "driver.longhorn.io" or manually created by system administrator
+  Normal  ProvisioningSucceeded  10m                driver.longhorn.io_csi-provisioner-869bdc4b79-s4gqb_b0fa1fcf-3a45-4b11-bf01-8e2c2367028d  Successfully provisioned volume pvc-1ac82eaa-f155-4f28-bd13-fce3cdf6b1a3
+```
+
+特别关注上述输出的 `Used By:` 字段
+
+
+
+
+
 ## 清理堆栈
 
 查看堆栈组件
@@ -620,24 +691,6 @@ statefulset.apps/quickstart-es-default   3/3     113m
 
 
 
-查看pvc
-
-```
-kubectl get pvc -n elastic-system
-```
-
-
-
-```bash
-root@node1:~# kubectl get pvc -n elastic-system
-NAME                                         STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
-elasticsearch-data-quickstart-es-default-0   Bound    pvc-6bd095de-a464-4a91-b713-96df3f455499   1Gi        RWO            longhorn       120m
-elasticsearch-data-quickstart-es-default-1   Bound    pvc-cccf0ff7-9bda-40ba-9bf9-befaef6c584e   1Gi        RWO            longhorn       52m
-elasticsearch-data-quickstart-es-default-2   Bound    pvc-a7c6b9a2-8eb7-47c8-9c12-92c5558462fe   1Gi        RWO            longhorn       49m
-```
-
-
-
 删除堆栈所有组件
 
 ```
@@ -675,4 +728,6 @@ statefulset.apps/elastic-operator   1/1     174m
 root@node1:~# kubectl get pvc -n elastic-system
 No resources found in elastic-system namespace.
 ```
+
+
 
