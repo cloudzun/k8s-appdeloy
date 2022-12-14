@@ -90,6 +90,7 @@ apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
   name: quickstart
+  namespace: elastic-system
 spec:
   version: 8.5.3
   nodeSets:
@@ -110,13 +111,13 @@ kubectl apply -f es.yaml
 检查群集状态
 
 ```bash
-kubectl get elasticsearch
+kubectl get elasticsearch -n elastic-system
 ```
 
 
 
 ```bash
-root@node1:~# kubectl get elasticsearch
+root@node1:~# kubectl get elasticsearch -n elastic-system
 NAME         HEALTH   NODES   VERSION   PHASE   AGE
 quickstart   green    1       8.5.3     Ready   4m18s
 ```
@@ -126,7 +127,7 @@ quickstart   green    1       8.5.3     Ready   4m18s
 检查elasticsearch pod
 
 ```bash
-kubectl get pod
+kubectl get pod -n elastic-system
 ```
 
 
@@ -140,7 +141,7 @@ quickstart-es-default-0   0/1     Running   0          2m36s
 
 
 ```bash
-kubectl logs quickstart-es-default-0
+kubectl logs quickstart-es-default-0 -n elastic-system
 ```
 
 
@@ -155,7 +156,7 @@ kubectl logs quickstart-es-default-0
 检查elasticsearch服务
 
 ```bash
-kubectl get svc
+kubectl get svc -n elastic-system
 ```
 
 
@@ -177,7 +178,7 @@ quickstart-es-transport       ClusterIP   None             <none>        9300/TC
 获取elasticsearch的凭据并尝试访问elasticsearch服务
 
 ```bash
-PASSWORD=$(kubectl get secret quickstart-es-elastic-user -o go-template='{{.data.elastic | base64decode}}')
+PASSWORD=$(kubectl get secret -n elastic-system quickstart-es-elastic-user -o go-template='{{.data.elastic | base64decode}}')
 ```
 
 
@@ -228,6 +229,7 @@ apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
   name: quickstart
+  namespace: elastic-system
 spec:
   version: 8.5.3
   count: 1
@@ -246,13 +248,13 @@ kubectl apply -f kibana.yaml
 检查kibana实例状态
 
 ```bash
-kubectl get kibana
+kubectl get kibana -n elastic-system
 ```
 
 
 
 ```bash
-root@node1:~# kubectl get kibana
+root@node1:~# kubectl get kibana -n elastic-system
 NAME         HEALTH   NODES   VERSION   AGE
 quickstart   green    1       8.5.3     3m56s
 ```
@@ -262,13 +264,13 @@ quickstart   green    1       8.5.3     3m56s
 检查kibana pod
 
 ```bash
-kubectl get pod
+kubectl get pod -n elastic-system
 ```
 
 
 
 ```bash
-root@node1:~# kubectl get pod
+root@node1:~# kubectl get pod -n elastic-system
 NAME                             READY   STATUS    RESTARTS   AGE
 quickstart-es-default-0          1/1     Running   0          31m
 quickstart-kb-58445784d9-7zn7h   1/1     Running   0          6m50s
@@ -279,13 +281,13 @@ quickstart-kb-58445784d9-7zn7h   1/1     Running   0          6m50s
 查看服务信息,并尝试访问
 
 ```bash
-kubectl get svc
+kubectl get svc -n elastic-system
 ```
 
 
 
 ```bash
-root@node1:~# kubectl get svc
+root@node1:~# kubectl get svc -n elastic-system
 NAME                          TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
 kubernetes                    ClusterIP   10.96.0.1        <none>        443/TCP    235d
 quickstart-es-default         ClusterIP   None             <none>        9200/TCP   33m
@@ -300,19 +302,19 @@ quickstart-kb-http            ClusterIP   10.97.112.160    <none>        5601/TC
 将quickstart-kb-http 服务改为NodePort模式
 
 ```bash
-kubectl patch svc quickstart-kb-http  -p '{"spec":{"type": "NodePort"}}'
+kubectl patch svc -n elastic-system quickstart-kb-http  -p '{"spec":{"type": "NodePort"}}'
 ```
 
 
 
 ```
-kubectl get svc
+kubectl get svc -n elastic-system
 ```
 
 
 
 ```bash
-root@node1:~# kubectl get svc
+root@node1:~# kubectl get svc -n elastic-system
 NAME                          TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
 kubernetes                    ClusterIP   10.96.0.1        <none>        443/TCP          235d
 quickstart-es-default         ClusterIP   None             <none>        9200/TCP         38m
@@ -327,13 +329,13 @@ quickstart-kb-http            NodePort    10.97.112.160    <none>        5601:30
 查看kibana凭据
 
 ```bash
-kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode; echo
+kubectl get secret -n elastic-system quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode; echo
 ```
 
 
 
 ```bash
-root@node1:~# kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode; echo
+root@node1:~# kubectl get secret -n elastic-system quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode; echo
 sP62op8Yhk7orpFK389R32t2
 ```
 
@@ -362,6 +364,7 @@ apiVersion: beat.k8s.elastic.co/v1beta1
 kind: Beat
 metadata:
   name: quickstart
+  namespace: elastic-system
 spec:
   type: filebeat
   version: 8.5.3
@@ -411,13 +414,13 @@ kubectl apply -f filebeats.yaml
 查看filebeats状态
 
 ```bash
-kubectl get beat
+kubectl get beat -n elastic-system
 ```
 
 
 
 ```bash
-root@node1:~# kubectl get beat
+root@node1:~# kubectl get beat -n elastic-system
 NAME         HEALTH   AVAILABLE   EXPECTED   TYPE       VERSION   AGE
 quickstart   green    3           3          filebeat   8.5.3     54s
 ```
@@ -427,13 +430,13 @@ quickstart   green    3           3          filebeat   8.5.3     54s
 查看filebeats pod
 
 ```bash
-kubectl get pod
+kubectl get pod -n elastic-system
 ```
 
 
 
 ```bash
-root@node1:~# kubectl get pod
+root@node1:~# kubectl get pod -n elastic-system
 NAME                             READY   STATUS    RESTARTS   AGE
 quickstart-beat-filebeat-6k8sh   1/1     Running   0          2m22s
 quickstart-beat-filebeat-9tpvj   1/1     Running   0          2m22s
@@ -447,7 +450,7 @@ quickstart-kb-58445784d9-7zn7h   1/1     Running   0          31m
 查看某个filebeat中的日志
 
 ```bash
-kubectl logs -f quickstart-beat-filebeat-d7gbt
+kubectl logs -f quickstart-beat-filebeat-d7gbt -n elastic-system
 ```
 
 
@@ -493,6 +496,7 @@ apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
   name: quickstart
+  namespace: elastic-system
 spec:
   version: 8.5.3
   nodeSets:
@@ -513,13 +517,13 @@ kubectl apply -f esv2.yaml
 检查群集状态
 
 ```bash
-kubectl get elasticsearch
+kubectl get elasticsearch -n elastic-system
 ```
 
 
 
 ```bash
-root@node1:~# kubectl get elasticsearch
+root@node1:~# kubectl get elasticsearch -n elastic-system
 NAME         HEALTH   NODES   VERSION   PHASE             AGE
 quickstart   yellow   1       8.5.3     ApplyingChanges   67m
 ```
@@ -529,13 +533,13 @@ quickstart   yellow   1       8.5.3     ApplyingChanges   67m
 检查pod信息
 
 ```bash
-kubectl get pod -o wide | grep quickstart-es-default
+kubectl get pod -n elastic-system -o wide | grep quickstart-es-default
 ```
 
 
 
 ```bash
-root@node1:~# kubectl get pod -o wide | grep quickstart-es-default
+root@node1:~# kubectl get pod -n elastic-system -o wide | grep quickstart-es-default
 quickstart-es-default-0          1/1     Running    0          69m     10.244.135.14   node3   <none>           <none>
 quickstart-es-default-1          0/1     Init:0/2   0          2m12s   <none>          node2   <none>           <none>
 ```
@@ -543,7 +547,7 @@ quickstart-es-default-1          0/1     Init:0/2   0          2m12s   <none>   
 
 
 ```bash
-root@node1:~# kubectl get elasticsearch
+root@node1:~# kubectl get elasticsearch -n elastic-system
 NAME         HEALTH   NODES   VERSION   PHASE   AGE
 quickstart   green    3       8.5.3     Ready   74m
 ```
@@ -555,13 +559,13 @@ quickstart   green    3       8.5.3     Ready   74m
 查看堆栈组件
 
 ```
-kubectl get elasticsearch,kibana,beat
+kubectl get elasticsearch,kibana,beat -n elastic-system
 ```
 
 
 
 ```bash
-root@node1:~# kubectl get elasticsearch,kibana,beat
+root@node1:~# kubectl get elasticsearch,kibana,beat -n elastic-system
 NAME                                                    HEALTH   NODES   VERSION   PHASE   AGE
 elasticsearch.elasticsearch.k8s.elastic.co/quickstart   green    3       8.5.3     Ready   119m
 
@@ -577,13 +581,13 @@ beat.beat.k8s.elastic.co/quickstart   green    3           3          filebeat  
 查看工作负载及服务
 
 ```bash
-kubectl get all
+kubectl get all -n elastic-system
 ```
 
 
 
 ```bash
-root@node1:~# kubectl get all
+root@node1:~# kubectl get all -n elastic-system
 NAME                                 READY   STATUS    RESTARTS   AGE
 pod/quickstart-beat-filebeat-6k8sh   1/1     Running   0          60m
 pod/quickstart-beat-filebeat-9tpvj   1/1     Running   0          60m
@@ -619,13 +623,13 @@ statefulset.apps/quickstart-es-default   3/3     113m
 查看pvc
 
 ```
-kubectl get pvc
+kubectl get pvc -n elastic-system
 ```
 
 
 
 ```bash
-root@node1:~# kubectl get pvc
+root@node1:~# kubectl get pvc -n elastic-system
 NAME                                         STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
 elasticsearch-data-quickstart-es-default-0   Bound    pvc-6bd095de-a464-4a91-b713-96df3f455499   1Gi        RWO            longhorn       120m
 elasticsearch-data-quickstart-es-default-1   Bound    pvc-cccf0ff7-9bda-40ba-9bf9-befaef6c584e   1Gi        RWO            longhorn       52m
@@ -637,19 +641,19 @@ elasticsearch-data-quickstart-es-default-2   Bound    pvc-a7c6b9a2-8eb7-47c8-9c1
 删除堆栈所有组件
 
 ```
-kubectl delete elasticsearch quickstart
-kubectl delete kibana quickstart
-kubectl delete beat quickstart
+kubectl delete elasticsearch quickstart -n elastic-system
+kubectl delete kibana quickstart -n elastic-system
+kubectl delete beat quickstart -n elastic-system
 ```
 
 
 
 ```bash
-root@node1:~# kubectl delete elasticsearch quickstart
+root@node1:~# kubectl delete elasticsearch quickstart -n elastic-system
 elasticsearch.elasticsearch.k8s.elastic.co "quickstart" deleted
-root@node1:~# kubectl delete kibana quickstart
+root@node1:~# kubectl delete kibana quickstart -n elastic-system
 kibana.kibana.k8s.elastic.co "quickstart" deleted
-root@node1:~# kubectl delete beat quickstart
+root@node1:~# kubectl delete beat quickstart -n elastic-system
 beat.beat.k8s.elastic.co "quickstart" deleted
 ```
 
@@ -658,11 +662,17 @@ beat.beat.k8s.elastic.co "quickstart" deleted
 再次查看工作负载和pvc
 
 ```bash
-root@node1:~# kubectl get all
-NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
-service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   235d
-root@node1:~# kubectl get pvc
-No resources found in default namespace.
-root@node1:~#
+
+root@node1:~# kubectl get all -n elastic-system
+NAME                     READY   STATUS    RESTARTS   AGE
+pod/elastic-operator-0   1/1     Running   0          174m
+
+NAME                             TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+service/elastic-webhook-server   ClusterIP   10.101.144.82   <none>        443/TCP   174m
+
+NAME                                READY   AGE
+statefulset.apps/elastic-operator   1/1     174m
+root@node1:~# kubectl get pvc -n elastic-system
+No resources found in elastic-system namespace.
 ```
 
