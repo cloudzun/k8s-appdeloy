@@ -1275,3 +1275,807 @@ No resources found in elastic-system namespace.
 
 
 
+# 使用Helm部署Kafaka技术堆栈
+
+
+
+## helm的安装和repo的添加
+
+安装helm
+
+```bash
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+```
+
+
+
+查看repo list
+
+
+
+```bash
+ helm repo list
+```
+
+
+
+```bash
+root@node1:~# helm repo list
+Error: no repositories to show
+```
+
+
+
+增加repo
+
+```bash
+helm repo add bitnami https://charts.bitnami.com/bitnami
+```
+
+
+
+```bash
+root@node1:~# helm repo add bitnami https://charts.bitnami.com/bitnami
+"bitnami" has been added to your repositories
+root@node1:~# helm repo list
+NAME    URL
+bitnami https://charts.bitnami.com/bitnami
+```
+
+
+
+搜索repo
+
+````bash
+helm search repo zookeeper
+````
+
+
+
+```bash
+root@node1:~/helmlab# helm search repo zookeeper
+NAME                            CHART VERSION   APP VERSION     DESCRIPTION
+bitnami/zookeeper               11.0.2          3.8.0           Apache ZooKeeper provides a reliable, centraliz...
+bitnami/dataplatform-bp1        12.0.2          1.0.1           DEPRECATED This Helm chart can be used for the ...
+bitnami/dataplatform-bp2        12.0.5          1.0.1           DEPRECATED This Helm chart can be used for the ...
+bitnami/kafka                   20.0.1          3.3.1           Apache Kafka is a distributed streaming platfor...
+bitnami/schema-registry         8.0.0           7.3.0           Confluent Schema Registry provides a RESTful in...
+bitnami/solr                    7.1.0           9.1.0           Apache Solr is an extremely powerful, open sour...
+```
+
+
+
+```bash
+helm search repo kafka
+```
+
+
+
+```bash
+root@node1:~# helm search repo kafka
+NAME                            CHART VERSION   APP VERSION     DESCRIPTION
+bitnami/kafka                   20.0.1          3.3.1           Apache Kafka is a distributed streaming platfor...
+bitnami/dataplatform-bp1        12.0.2          1.0.1           DEPRECATED This Helm chart can be used for the ...
+bitnami/dataplatform-bp2        12.0.5          1.0.1           DEPRECATED This Helm chart can be used for the ...
+bitnami/schema-registry         8.0.0           7.3.0           Confluent Schema Registry provides a RESTful in...
+```
+
+
+
+查看特定chart的版本
+
+```
+helm search repo bitnami/kafka -l
+```
+
+
+
+```bash
+root@node1:~/helmlab# helm search repo bitnami/kafka -l
+NAME            CHART VERSION   APP VERSION     DESCRIPTION
+bitnami/kafka   20.0.1          3.3.1           Apache Kafka is a distributed streaming platfor...
+bitnami/kafka   20.0.0          3.3.1           Apache Kafka is a distributed streaming platfor...
+bitnami/kafka   19.1.5          3.3.1           Apache Kafka is a distributed streaming platfor...
+bitnami/kafka   19.1.4          3.3.1           Apache Kafka is a distributed streaming platfor...
+bitnami/kafka   19.1.3          3.3.1           Apache Kafka is a distributed streaming platfor...
+...
+```
+
+
+
+创建目录
+
+```bash
+mkdir helmlab
+
+cd helmlab
+```
+
+
+
+创建命名空间
+
+```bash
+kubectl create ns kafka-lab
+```
+
+
+
+## 安装Zookeeper集群
+
+
+
+下载zookeeper chart
+
+```bash
+helmlab# helm pull bitnami/zookeeper
+```
+
+
+
+```bash
+root@node1:~/helmlab# dir
+zookeeper-11.0.2.tgz
+```
+
+
+
+解压缩
+
+```bash
+tar xf zookeeper-11.0.2.tgz
+```
+
+
+
+```bash
+root@node1:~/helmlab# tar xf zookeeper-11.0.2.tgz
+root@node1:~/helmlab# dir
+kafka-20.0.1.tgz  zookeeper  zookeeper-11.0.2.tgz
+root@node1:~/helmlab# cd zookeeper
+root@node1:~/helmlab/zookeeper# dir
+Chart.lock  charts  Chart.yaml  README.md  templates  values.yaml
+```
+
+
+
+编辑values
+
+```
+```
+
+
+
+副本数
+
+```bash
+## @section Statefulset parameters
+
+## @param replicaCount Number of ZooKeeper nodes
+##
+replicaCount: 3 #默认数值为1,可以修改为3
+```
+
+
+
+auth认证
+
+```bash
+auth:
+  client:
+    # @param auth.client.enabled Enable ZooKeeper client-server authentication. It uses SASL/Digest-MD5
+    
+    enabled: false #默认为false,建议实验环境下保持不变
+```
+
+
+
+数据持久化
+
+```bash
+persistence:
+  ## @param persistence.enabled Enable ZooKeeper data persistence using PVC. If false, use emptyDir
+  ##
+  enabled: true #如果实验环境中没有搭建存储解决方案设置为false
+  ## @param persistence.existingClaim Name of an existing PVC to use (only when deploying a single replica)
+  ##
+  existingClaim: ""
+  ## @param persistence.storageClass PVC Storage Class for ZooKeeper data volume
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName spec is
+  ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+  ##   GKE, AWS & OpenStack)
+  ##
+  storageClass: "longhorn" #设置存储类型的值,本例中使用longhorn
+  ## @param persistence.accessModes PVC Access modes
+  ##
+  accessModes:
+    - ReadWriteOnce
+```
+
+
+
+安装群集
+
+```bash
+helm install -n kafka-lab zookeeper .
+```
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# helm install -n kafka-lab zookeeper .
+NAME: zookeeper
+LAST DEPLOYED: Thu Dec 15 12:09:09 2022
+NAMESPACE: kafka-lab
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+CHART NAME: zookeeper
+CHART VERSION: 11.0.2
+APP VERSION: 3.8.0
+
+** Please be patient while the chart is being deployed **
+
+ZooKeeper can be accessed via port 2181 on the following DNS name from within your cluster:
+
+    zookeeper.kafka-lab.svc.cluster.local
+
+To connect to your ZooKeeper server run the following commands:
+
+    export POD_NAME=$(kubectl get pods --namespace kafka-lab -l "app.kubernetes.io/name=zookeeper,app.kubernetes.io/instance=zookeeper,app.kubernetes.io/component=zookeeper" -o jsonpath="{.items[0].metadata.name}")
+    kubectl exec -it $POD_NAME -- zkCli.sh
+
+To connect to your ZooKeeper server from outside the cluster execute the following commands:
+
+    kubectl port-forward --namespace kafka-lab svc/zookeeper 2181:2181 &
+    zkCli.sh 127.0.0.1:2181
+```
+
+
+
+查看群集对应的工作负载
+
+```bash
+kubectl get all -n kafka-lab
+```
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# kubectl get all -n kafka-lab
+NAME              READY   STATUS    RESTARTS   AGE
+pod/zookeeper-0   1/1     Running   0          6m24s
+pod/zookeeper-1   1/1     Running   0          6m24s
+pod/zookeeper-2   1/1     Running   0          6m24s
+
+NAME                         TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)                      AGE
+service/zookeeper            ClusterIP   10.101.65.54   <none>        2181/TCP,2888/TCP,3888/TCP   6m24s
+service/zookeeper-headless   ClusterIP   None           <none>        2181/TCP,2888/TCP,3888/TCP   6m24s
+
+NAME                         READY   AGE
+statefulset.apps/zookeeper   3/3     6m24s
+```
+
+
+
+观察PVC和PV
+
+```bash
+kubectl get pvc -n kafka-lab
+
+kubectl get pv
+```
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# kubectl get pvc -n kafka-lab
+NAME               STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+data-zookeeper-0   Bound    pvc-a9d4053d-dc35-4a36-8473-64bfdf79e094   8Gi        RWO            longhorn       14m
+data-zookeeper-1   Bound    pvc-afd2c025-2b64-4378-be95-94911386635d   8Gi        RWO            longhorn       14m
+data-zookeeper-2   Bound    pvc-177ffa74-c04c-418a-b0a3-b90464a10de1   8Gi        RWO            longhorn       14m
+root@node1:~/helmlab/zookeeper# kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                        STORAGECLASS   REASON   AGE
+pvc-177ffa74-c04c-418a-b0a3-b90464a10de1   8Gi        RWO            Delete           Bound    kafka-lab/data-zookeeper-2   longhorn                14m
+pvc-a9d4053d-dc35-4a36-8473-64bfdf79e094   8Gi        RWO            Delete           Bound    kafka-lab/data-zookeeper-0   longhorn                14m
+pvc-afd2c025-2b64-4378-be95-94911386635d   8Gi        RWO            Delete           Bound    kafka-lab/data-zookeeper-1   longhorn                14m
+```
+
+
+
+查看zookeeper群集状态
+
+```bash
+kubectl exec -it zookeeper-0 -n kafka-lab /opt/bitnami/zookeeper/bin/zkServer.sh status
+```
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# kubectl exec -it zookeeper-0 -n kafka-lab /opt/bitnami/zookeeper/bin/zkServer.sh status
+kubectl exec [POD] [COMMAND] is DEPRECATED and will be removed in a future version. Use kubectl exec [POD] -- [COMMAND] instead.
+/opt/bitnami/java/bin/java
+ZooKeeper JMX enabled by default
+Using config: /opt/bitnami/zookeeper/bin/../conf/zoo.cfg
+Client port found: 2181. Client address: localhost. Client SSL: false.
+Mode: follower
+```
+
+
+
+连接到群集进行交互
+
+```bash
+ kubectl exec -it zookeeper-0 -n kafka-lab  -- zkCli.sh
+```
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# kubectl exec -it zookeeper-0 -n kafka-lab  -- zkCli.sh
+/opt/bitnami/java/bin/java
+Connecting to localhost:2181
+Welcome to ZooKeeper!
+JLine support is enabled
+
+WATCHER::
+
+WatchedEvent state:SyncConnected type:None path:null
+[zk: localhost:2181(CONNECTED) 0]
+```
+
+
+
+
+
+## 安装Kafka群集
+
+使用命令行安装kafka群集
+
+```bash
+helm install kafka bitnami/kafka   --set zookeeper.enabled=false   --set replicaCount=3   --set externalZookeeper.servers=zookeeper -n kafka-lab
+```
+
+`--set zookeeper.enabled=false` 使用此前安装的zookpeeper群集
+
+`--set replicaCount=3` 设定kafka群集的节点数
+
+`--set externalZookeeper.servers=zookeeper` 指定zookeeper群集的名称
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# helm install kafka bitnami/kafka   --set zookeeper.enabled=false   --set replicaCount=3   --set externalZookeeper.servers=zookeeper -n kafka-lab
+NAME: kafka
+LAST DEPLOYED: Thu Dec 15 12:46:51 2022
+NAMESPACE: kafka-lab
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+CHART NAME: kafka
+CHART VERSION: 20.0.1
+APP VERSION: 3.3.1
+
+** Please be patient while the chart is being deployed **
+
+Kafka can be accessed by consumers via port 9092 on the following DNS name from within your cluster:
+
+    kafka.kafka-lab.svc.cluster.local
+
+Each Kafka broker can be accessed by producers via port 9092 on the following DNS name(s) from within your cluster:
+
+    kafka-0.kafka-headless.kafka-lab.svc.cluster.local:9092
+    kafka-1.kafka-headless.kafka-lab.svc.cluster.local:9092
+    kafka-2.kafka-headless.kafka-lab.svc.cluster.local:9092
+
+To create a pod that you can use as a Kafka client run the following commands:
+
+    kubectl run kafka-client --restart='Never' --image docker.io/bitnami/kafka:3.3.1-debian-11-r22 --namespace kafka-lab --command -- sleep infinity
+    kubectl exec --tty -i kafka-client --namespace kafka-lab -- bash
+
+    PRODUCER:
+        kafka-console-producer.sh \
+
+            --broker-list kafka-0.kafka-headless.kafka-lab.svc.cluster.local:9092,kafka-1.kafka-headless.kafka-lab.svc.cluster.local:9092,kafka-2.kafka-headless.kafka-lab.svc.cluster.local:9092 \
+            --topic test
+
+    CONSUMER:
+        kafka-console-consumer.sh \
+
+            --bootstrap-server kafka.kafka-lab.svc.cluster.local:9092 \
+            --topic test \
+            --from-beginning
+```
+
+
+
+查看工作负载
+
+```
+kubectl get all -n kafka-lab
+```
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# kubectl get all -n kafka-lab
+NAME              READY   STATUS    RESTARTS   AGE
+pod/kafka-0       1/1     Running   0          3m31s
+pod/kafka-1       1/1     Running   0          3m31s
+pod/kafka-2       1/1     Running   0          3m31s
+pod/zookeeper-0   1/1     Running   0          41m
+pod/zookeeper-1   1/1     Running   0          41m
+pod/zookeeper-2   1/1     Running   0          41m
+
+NAME                         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE
+service/kafka                ClusterIP   10.96.222.243   <none>        9092/TCP                     3m31s
+service/kafka-headless       ClusterIP   None            <none>        9092/TCP,9093/TCP            3m31s
+service/zookeeper            ClusterIP   10.101.65.54    <none>        2181/TCP,2888/TCP,3888/TCP   41m
+service/zookeeper-headless   ClusterIP   None            <none>        2181/TCP,2888/TCP,3888/TCP   41m
+
+NAME                         READY   AGE
+statefulset.apps/kafka       3/3     3m31s
+statefulset.apps/zookeeper   3/3     41m
+```
+
+
+
+查看pvc和pv
+
+
+
+```
+kubectl get pvc -n kafka-lab
+
+kubectl get pv
+```
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# kubectl get pvc -n kafka-lab
+NAME               STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+data-kafka-0       Bound    pvc-a2247087-7de3-4408-af30-6f6b5128a2c3   8Gi        RWO            longhorn       28m
+data-kafka-1       Bound    pvc-fdb3e80e-6a83-43f2-8662-3d7b9109c340   8Gi        RWO            longhorn       28m
+data-kafka-2       Bound    pvc-53f40967-036a-479a-a9c4-ed7d5b38dead   8Gi        RWO            longhorn       28m
+data-zookeeper-0   Bound    pvc-a9d4053d-dc35-4a36-8473-64bfdf79e094   8Gi        RWO            longhorn       66m
+data-zookeeper-1   Bound    pvc-afd2c025-2b64-4378-be95-94911386635d   8Gi        RWO            longhorn       66m
+data-zookeeper-2   Bound    pvc-177ffa74-c04c-418a-b0a3-b90464a10de1   8Gi        RWO            longhorn       66m
+root@node1:~/helmlab/zookeeper# kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                            STORAGECLASS   REASON   AGE
+pvc-177ffa74-c04c-418a-b0a3-b90464a10de1   8Gi        RWO            Delete           Bound    kafka-lab/data-zookeeper-2       longhorn                66m
+pvc-53f40967-036a-479a-a9c4-ed7d5b38dead   8Gi        RWO            Delete           Bound    kafka-lab/data-kafka-2           longhorn                28m
+pvc-a2247087-7de3-4408-af30-6f6b5128a2c3   8Gi        RWO            Delete           Bound    kafka-lab/data-kafka-0           longhorn                28m
+pvc-a9d4053d-dc35-4a36-8473-64bfdf79e094   8Gi        RWO            Delete           Bound    kafka-lab/data-zookeeper-0       longhorn                66m
+pvc-afd2c025-2b64-4378-be95-94911386635d   8Gi        RWO            Delete           Bound    kafka-lab/data-zookeeper-1       longhorn                66m
+pvc-fdb3e80e-6a83-43f2-8662-3d7b9109c340   8Gi        RWO            Delete           Bound    kafka-lab/data-kafka-1           longhorn                28m
+```
+
+
+
+## 测试kafka群集
+
+
+
+安装kafka-client
+
+```bash
+ kubectl run kafka-client --restart='Always' --image docker.io/bitnami/kafka:2.8.1-debian-10-r57 --namespace kafka-lab --command -- sleep infinity
+```
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# kubectl get pod -n kafka-lab
+NAME           READY   STATUS    RESTARTS   AGE
+kafka-0        1/1     Running   0          56m
+kafka-1        1/1     Running   0          56m
+kafka-2        1/1     Running   0          56m
+kafka-client   1/1     Running   0          23s
+zookeeper-0    1/1     Running   0          94m
+zookeeper-1    1/1     Running   0          94m
+zookeeper-2    1/1     Running   0          94m
+```
+
+
+
+打开两个窗口（一个作为生产者：producer，一个作为消费者：consumer），但是两个窗口都得先登录客户端
+
+```bash
+kubectl exec --tty -i kafka-client --namespace kafka-lab -- bash
+```
+
+
+
+producer端
+
+```bash
+ kafka-console-producer.sh \
+--broker-list kafka-0.kafka-headless.kafka-lab.svc.cluster.local:9092,kafka-1.kafka-headless.kafka-lab.svc.cluster.local:9092,kafka-2.kafka-headless.kafka-lab.svc.cluster.local:9092 \
+--topic test
+```
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# kubectl exec --tty -i kafka-client --namespace kafka-lab -- bash
+I have no name!@kafka-client:/$ clear
+bash: clear: command not found
+I have no name!@kafka-client:/$  kafka-console-producer.sh \
+> --broker-list kafka-0.kafka-headless.kafka-lab.svc.cluster.local:9092,kafka-1.kafka-headless.kafka-lab.svc.cluster.local:9092,kafka-2.kafka-headless.kafka-lab.svc.cluster.local:9092 \
+> --topic test
+>wahahhaa
+>xixixi
+>to day is very happy
+>are you ok?
+>
+```
+
+
+
+consumer端
+
+```bash
+kafka-console-consumer.sh \
+--bootstrap-server kafka.kafka-lab.svc.cluster.local:9092 \
+--topic test \
+--from-beginning
+```
+
+
+
+```bash
+root@node1:~# kubectl exec --tty -i kafka-client --namespace kafka-lab -- bash
+I have no name!@kafka-client:/$ kafka-console-consumer.sh \
+> --bootstrap-server kafka.kafka-lab.svc.cluster.local:9092 \
+> --topic test \
+> --from-beginning
+[2022-12-15 05:48:55,885] WARN [Consumer clientId=consumer-console-consumer-86771-1, groupId=console-consumer-86771] Error while fetching metadata with correlation id 2 : {test=LEADER_NOT_AVAILABLE} (org.apache.kafka.clients.NetworkClient)
+[2022-12-15 05:48:56,090] WARN [Consumer clientId=consumer-console-consumer-86771-1, groupId=console-consumer-86771] Error while fetching metadata with correlation id 4 : {test=LEADER_NOT_AVAILABLE} (org.apache.kafka.clients.NetworkClient)
+[2022-12-15 05:48:56,204] WARN [Consumer clientId=consumer-console-consumer-86771-1, groupId=console-consumer-86771] Error while fetching metadata with correlation id 6 : {test=LEADER_NOT_AVAILABLE} (org.apache.kafka.clients.NetworkClient)
+[2022-12-15 05:48:56,329] WARN [Consumer clientId=consumer-console-consumer-86771-1, groupId=console-consumer-86771] Error while fetching metadata with correlation id 8 : {test=LEADER_NOT_AVAILABLE} (org.apache.kafka.clients.NetworkClient)
+wahahhaa
+xixixi
+to day is very happy
+are you ok?
+```
+
+
+
+## 堆栈生命周期管理
+
+查看helm release
+
+```bash
+helm list -n kafka-lab
+```
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# helm list -n kafka-lab
+NAME            NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
+kafka           kafka-lab       1               2022-12-15 12:46:51.408320335 +0800 CST deployed        kafka-20.0.1            3.3.1
+zookeeper       kafka-lab       1               2022-12-15 12:09:09.623023613 +0800 CST deployed        zookeeper-11.0.2        3.8.0
+
+```
+
+
+
+查看release属性
+
+```bash
+helm get values kafka -n kafka-lab
+```
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# helm get values kafka -n kafka-lab
+USER-SUPPLIED VALUES:
+externalZookeeper:
+  servers: zookeeper
+replicaCount: 3
+zookeeper:
+  enabled: false
+```
+
+
+
+```bash
+helm get values zookeeper -n kafka-lab
+```
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# helm get values zookeeper -n kafka-lab
+USER-SUPPLIED VALUES:
+null
+```
+
+因为zookeeper是通过编辑value文件生成的,因此此处不显示 `USER-SUPPLIED VALUES` 
+
+
+
+扩展kafka的群集规模到4个节点
+
+```bash
+helm upgrade kafka bitnami/kafka   --set zookeeper.enabled=false   --set replicaCount=4   --set externalZookeeper.servers=zookeeper -n kafka-lab
+```
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# helm upgrade kafka bitnami/kafka   --set zookeeper.enabled=false   --set replicaCount=4   --set externalZookeeper.servers=zookeeper -n kafka-lab
+Release "kafka" has been upgraded. Happy Helming!
+NAME: kafka
+LAST DEPLOYED: Thu Dec 15 14:01:18 2022
+NAMESPACE: kafka-lab
+STATUS: deployed
+REVISION: 2
+TEST SUITE: None
+NOTES:
+CHART NAME: kafka
+CHART VERSION: 20.0.1
+APP VERSION: 3.3.1
+
+** Please be patient while the chart is being deployed **
+
+Kafka can be accessed by consumers via port 9092 on the following DNS name from within your cluster:
+
+    kafka.kafka-lab.svc.cluster.local
+
+Each Kafka broker can be accessed by producers via port 9092 on the following DNS name(s) from within your cluster:
+
+    kafka-0.kafka-headless.kafka-lab.svc.cluster.local:9092
+    kafka-1.kafka-headless.kafka-lab.svc.cluster.local:9092
+    kafka-2.kafka-headless.kafka-lab.svc.cluster.local:9092
+    kafka-3.kafka-headless.kafka-lab.svc.cluster.local:9092
+
+To create a pod that you can use as a Kafka client run the following commands:
+
+    kubectl run kafka-client --restart='Never' --image docker.io/bitnami/kafka:3.3.1-debian-11-r22 --namespace kafka-lab --command -- sleep infinity
+    kubectl exec --tty -i kafka-client --namespace kafka-lab -- bash
+
+    PRODUCER:
+        kafka-console-producer.sh \
+
+            --broker-list kafka-0.kafka-headless.kafka-lab.svc.cluster.local:9092,kafka-1.kafka-headless.kafka-lab.svc.cluster.local:9092,kafka-2.kafka-headless.kafka-lab.svc.cluster.local:9092,kafka-3.kafka-headless.kafka-lab.svc.cluster.local:9092 \
+            --topic test
+
+    CONSUMER:
+        kafka-console-consumer.sh \
+
+            --bootstrap-server kafka.kafka-lab.svc.cluster.local:9092 \
+            --topic test \
+            --from-beginning
+```
+
+
+
+扩展zookeeper群集规模到4个节点
+
+```bash
+nano values.yaml
+```
+
+
+
+```bash
+## @param replicaCount Number of ZooKeeper nodes
+##
+replicaCount: 4
+```
+
+
+
+```
+helm upgrade -n kafka-lab zookeeper .
+```
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# helm upgrade -n kafka-lab zookeeper .
+Release "zookeeper" has been upgraded. Happy Helming!
+NAME: zookeeper
+LAST DEPLOYED: Thu Dec 15 14:04:03 2022
+NAMESPACE: kafka-lab
+STATUS: deployed
+REVISION: 2
+TEST SUITE: None
+NOTES:
+CHART NAME: zookeeper
+CHART VERSION: 11.0.2
+APP VERSION: 3.8.0
+
+** Please be patient while the chart is being deployed **
+
+ZooKeeper can be accessed via port 2181 on the following DNS name from within your cluster:
+
+    zookeeper.kafka-lab.svc.cluster.local
+
+To connect to your ZooKeeper server run the following commands:
+
+    export POD_NAME=$(kubectl get pods --namespace kafka-lab -l "app.kubernetes.io/name=zookeeper,app.kubernetes.io/instance=zookeeper,app.kubernetes.io/component=zookeeper" -o jsonpath="{.items[0].metadata.name}")
+    kubectl exec -it $POD_NAME -- zkCli.sh
+
+To connect to your ZooKeeper server from outside the cluster execute the following commands:
+
+    kubectl port-forward --namespace kafka-lab svc/zookeeper 2181:2181 &
+    zkCli.sh 127.0.0.1:2181
+```
+
+
+
+查看工作负载
+
+```
+kubectl get all -n kafka-lab
+```
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# kubectl get all -n kafka-lab
+NAME               READY   STATUS    RESTARTS   AGE
+pod/kafka-0        1/1     Running   0          79m
+pod/kafka-1        1/1     Running   0          79m
+pod/kafka-2        1/1     Running   0          79m
+pod/kafka-3        1/1     Running   0          4m44s
+pod/kafka-client   1/1     Running   0          23m
+pod/zookeeper-0    1/1     Running   0          46s
+pod/zookeeper-1    1/1     Running   0          68s
+pod/zookeeper-2    1/1     Running   0          79s
+pod/zookeeper-3    1/1     Running   0          2m
+
+NAME                         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE
+service/kafka                ClusterIP   10.96.222.243   <none>        9092/TCP                     79m
+service/kafka-headless       ClusterIP   None            <none>        9092/TCP,9093/TCP            79m
+service/zookeeper            ClusterIP   10.101.65.54    <none>        2181/TCP,2888/TCP,3888/TCP   116m
+service/zookeeper-headless   ClusterIP   None            <none>        2181/TCP,2888/TCP,3888/TCP   116m
+
+NAME                         READY   AGE
+statefulset.apps/kafka       4/4     79m
+statefulset.apps/zookeeper   4/4     116m
+```
+
+
+
+删除release
+
+```bash
+helm uninstall kafka -n kafka-lab
+helm uninstall zookeeper -n kafka-lab
+```
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# helm uninstall kafka -n kafka-lab
+release "kafka" uninstalled
+root@node1:~/helmlab/zookeeper# helm uninstall zookeeper -n kafka-lab
+release "zookeeper" uninstalled
+```
+
+
+
+查看工作负载
+
+```bash
+get all -n kafka-lab
+```
+
+
+
+```bash
+root@node1:~/helmlab/zookeeper# kubectl get all -n kafka-lab
+NAME               READY   STATUS    RESTARTS   AGE
+pod/kafka-client   1/1     Running   0          26m
+```
+
