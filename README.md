@@ -152,7 +152,7 @@ BinaryData
 Events:  <none>
 ```
 
-
+注意 `default_pass` 的值
 
 
 
@@ -887,7 +887,7 @@ sP62op8Yhk7orpFK389R32t2
 
 
 
-使用 elastic作为用户名,并使用上述输出中的密码登录到https://node1:30572
+使用 `elastic`作为用户名,并使用上述输出中的密码登录到https://node1:30572
 
 ![image-20221214112638542](README.assets/image-20221214112638542.png)
 
